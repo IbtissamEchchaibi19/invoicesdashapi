@@ -1,0 +1,12 @@
+pandas
+dash
+plotly
+fastapi
+uvicorn
+pydantic
+camelot-py[cv]
+PyMuPDF
+python-multipart
+python-dotenv
+opencv-python
+regex
