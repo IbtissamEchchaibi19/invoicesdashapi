@@ -8,13 +8,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-
-
-
 # Global variable to track data version
-# Create the Dash app
-
 data_version = 0
+
 def increment_data_version():
     """Call this function when data is updated to trigger dashboard refresh"""
     global data_version
@@ -76,10 +72,11 @@ def load_invoice_data():
             'vat', 'profit', 'profit_margin', 'cost_price', 'days_to_payment'
         ])
 
-
+# Create the Dash app
 app = dash.Dash(__name__, 
                 title="🍯 Honey Analytics Dashboard",
                 requests_pathname_prefix='/dash_app/')
+
 # Enhanced styling with honey theme
 honey_colors = {
     'primary': '#D4A574',      # Golden honey
@@ -92,6 +89,35 @@ honey_colors = {
     'text_dark': '#2F2F2F',    # Dark gray
     'text_light': '#666666'    # Medium gray
 }
+
+honey_chart_colors = [
+    '#D4A574',  # Golden honey
+    '#8B4513',  # Dark honey/amber
+    '#FF8C00',  # Dark orange
+    '#228B22',  # Forest green
+    '#DAA520',  # Goldenrod
+    '#CD853F',  # Peru
+    '#B8860B',  # Dark goldenrod
+    '#F4A460',  # Sandy brown
+    '#DEB887',  # Burlywood
+    '#BC8F8F',  # Rosy brown
+    '#A0522D',  # Sienna
+    '#D2691E'   # Chocolate
+]
+
+# FIXED: Add global layout configuration for all charts
+def get_base_layout():
+    """Return base layout configuration for all charts"""
+    return {
+        'paper_bgcolor': honey_colors['card_bg'],
+        'plot_bgcolor': honey_colors['background'],
+        'font': dict(color=honey_colors['text_dark']),
+        'showlegend': True,
+        'margin': dict(l=40, r=40, t=60, b=40),
+        # CRITICAL FIX: Disable animations
+        'transition': {'duration': 0},
+        'animation': {'duration': 0}
+    }
 
 # Custom CSS styles
 app.index_string = '''
@@ -124,6 +150,11 @@ app.index_string = '''
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
             }
+            /* FIXED: Prevent chart container resizing */
+            .plotly-graph-div {
+                width: 100% !important;
+                height: 400px !important;
+            }
         </style>
     </head>
     <body>
@@ -137,7 +168,7 @@ app.index_string = '''
 </html>
 '''
 
-# Define the enhanced layout
+# Your existing layout code here (unchanged)
 app.layout = html.Div([
     # Header with refresh button
     html.Div([
@@ -306,7 +337,7 @@ app.layout = html.Div([
                 'fontSize': '1.5rem',
                 'fontWeight': '600'
             }),
-            dcc.Graph(id='revenue-trend-graph')
+            dcc.Graph(id='revenue-trend-graph', config={'displayModeBar': False})
         ], style={
             'background': honey_colors['card_bg'],
             'padding': '25px',
@@ -326,7 +357,7 @@ app.layout = html.Div([
                     'fontSize': '1.4rem',
                     'fontWeight': '600'
                 }),
-                dcc.Graph(id='product-distribution')
+                dcc.Graph(id='product-distribution', config={'displayModeBar': False})
             ], style={
                 'background': honey_colors['card_bg'],
                 'padding': '25px',
@@ -343,7 +374,7 @@ app.layout = html.Div([
                     'fontSize': '1.4rem',
                     'fontWeight': '600'
                 }),
-                dcc.Graph(id='product-revenue')
+                dcc.Graph(id='product-revenue', config={'displayModeBar': False})
             ], style={
                 'background': honey_colors['card_bg'],
                 'padding': '25px',
@@ -372,7 +403,7 @@ app.layout = html.Div([
                     'fontSize': '1.2rem',
                     'fontWeight': '500'
                 }),
-                dcc.Graph(id='location-revenue')
+                dcc.Graph(id='location-revenue', config={'displayModeBar': False})
             ], style={
                 'background': honey_colors['card_bg'],
                 'padding': '20px',
@@ -389,7 +420,7 @@ app.layout = html.Div([
                     'fontSize': '1.2rem',
                     'fontWeight': '500'
                 }),
-                dcc.Graph(id='customer-type-revenue')
+                dcc.Graph(id='customer-type-revenue', config={'displayModeBar': False})
             ], style={
                 'background': honey_colors['card_bg'],
                 'padding': '20px',
@@ -410,7 +441,7 @@ app.layout = html.Div([
                 'fontSize': '1.5rem',
                 'fontWeight': '600'
             }),
-            dcc.Graph(id='profit-margin')
+            dcc.Graph(id='profit-margin', config={'displayModeBar': False})
         ], style={
             'background': honey_colors['card_bg'],
             'padding': '25px',
@@ -496,13 +527,13 @@ app.layout = html.Div([
     ], style={'margin': '0 40px 40px 40px'})
 ], style={'minHeight': '100vh', 'paddingBottom': '40px'})
 
-# Callback to load data on page load or manual refresh
+# FIXED: Callback to load data on page load or manual refresh
 @app.callback(
     [Output('data-store', 'data'),
      Output('last-update-time', 'children'),
      Output('status-indicator', 'children')],
     [Input('refresh-button', 'n_clicks')],
-    prevent_initial_call=False  # Allow initial load
+    prevent_initial_call=False
 )
 def update_data_store(n_clicks):
     print(f"Loading data - Button clicks: {n_clicks}")
@@ -522,13 +553,14 @@ def update_data_store(n_clicks):
     
     return data_dict, f"⏰ Last Updated: {current_time}", status_msg
 
-# Callback to update date range when data changes
+# FIXED: Callback to update date range when data changes
 @app.callback(
     [Output('date-range', 'min_date_allowed'),
      Output('date-range', 'max_date_allowed'),
      Output('date-range', 'start_date'),
      Output('date-range', 'end_date')],
-    [Input('data-store', 'data')]
+    [Input('data-store', 'data')],
+    prevent_initial_call=True  # FIXED: Prevent initial call to avoid conflicts
 )
 def update_date_range(data):
     if not data:
@@ -552,7 +584,7 @@ def update_date_range(data):
     
     return min_date, max_date, min_date, max_date
 
-# Main callback to update all dashboard components
+# FIXED: Main dashboard callback with stable data processing
 @app.callback(
     [
         Output('total-revenue', 'children'),
@@ -571,109 +603,69 @@ def update_date_range(data):
         Input('data-store', 'data'),
         Input('date-range', 'start_date'),
         Input('date-range', 'end_date')
-    ]
+    ],
+    prevent_initial_call=True
 )
+
 def update_dashboard(data, start_date, end_date):
-    # Custom color palette for charts
-    honey_chart_colors = [honey_colors['primary'], honey_colors['accent'], honey_colors['warning'], 
-                         honey_colors['success'], '#CD853F', '#DAA520', '#B8860B', '#FFB347']
-    
-    # Handle empty data
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
     if not data:
         empty_fig = px.scatter()
         empty_fig.update_layout(
-            title="🍯 No data available - Click refresh or upload invoices",
+            title="🍯 No data available",
             plot_bgcolor=honey_colors['background'],
             paper_bgcolor=honey_colors['card_bg']
         )
-        return ("AED 0.00", "0", "AED 0.00", "0.0%", empty_fig, empty_fig, 
-                empty_fig, empty_fig, empty_fig, empty_fig, [])
-    
-    # Convert data back to DataFrame
+        return ("AED 0.00", "0", "AED 0.00", "0.0%", *[empty_fig]*6, [])
+
     df = pd.DataFrame(data)
-    
-    if df.empty:
-        empty_fig = px.scatter()
-        empty_fig.update_layout(
-            title="🍯 No data available - Click refresh or upload invoices",
-            plot_bgcolor=honey_colors['background'],
-            paper_bgcolor=honey_colors['card_bg']
-        )
-        return ("AED 0.00", "0", "AED 0.00", "0.0%", empty_fig, empty_fig, 
-                empty_fig, empty_fig, empty_fig, empty_fig, [])
-    
-    # Convert date columns back to datetime
-    date_columns = ['invoice_date', 'due_date']
-    for col in date_columns:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
-    
-    # Apply date filter if dates are provided
+    df['invoice_date'] = pd.to_datetime(df['invoice_date'], errors='coerce')
+
+    # Apply date filtering
     if start_date and end_date:
-        if isinstance(start_date, str):
-            start_date = pd.to_datetime(start_date)
-        if isinstance(end_date, str):
-            end_date = pd.to_datetime(end_date)
-        
+        start_date = pd.to_datetime(start_date)
+        end_date = pd.to_datetime(end_date)
         filtered_df = df[(df['invoice_date'] >= start_date) & (df['invoice_date'] <= end_date)]
     else:
         filtered_df = df
-    
-    # If filtering results in empty dataframe
+
     if filtered_df.empty:
         empty_fig = px.scatter()
         empty_fig.update_layout(
-            title="🍯 No data available for selected date range",
+            title="🍯 No data in selected date range",
             plot_bgcolor=honey_colors['background'],
             paper_bgcolor=honey_colors['card_bg']
         )
-        return ("AED 0.00", "0", "AED 0.00", "0.0%", empty_fig, empty_fig, 
-                empty_fig, empty_fig, empty_fig, empty_fig, [])
-    
-    # Calculate KPIs
+        return ("AED 0.00", "0", "AED 0.00", "0.0%", *[empty_fig]*6, [])
+
+    # KPIs
     total_revenue = f"AED {filtered_df['total'].sum():,.2f}"
-    invoice_count = len(filtered_df['invoice_id'].unique())
-    
-    # Calculate average invoice value
+    invoice_count = str(filtered_df['invoice_id'].nunique())
     invoice_totals = filtered_df.groupby('invoice_id')['total'].sum()
     avg_invoice = f"AED {invoice_totals.mean():,.2f}" if not invoice_totals.empty else "AED 0.00"
-    
-    # Calculate payment rate 
-    paid_amount = filtered_df[filtered_df['payment_status'] == 'Paid']['total'].sum()
-    total_amount = filtered_df['total'].sum()
-    payment_rate = f"{(paid_amount / total_amount * 100) if total_amount > 0 else 0:.1f}%"
-    
-    # Revenue Trend Graph with honey styling
+    paid = filtered_df[filtered_df['payment_status'] == 'Paid']['total'].sum()
+    total = filtered_df['total'].sum()
+    payment_rate = f"{(paid / total * 100) if total > 0 else 0:.1f}%"
+
+    # Monthly Revenue
     df_monthly = filtered_df.copy()
     df_monthly['month'] = df_monthly['invoice_date'].dt.strftime('%Y-%m')
-    
-    # Handle case when amount_excl_vat column doesn't exist
-    if 'amount_excl_vat' not in df_monthly.columns:
-        df_monthly['amount_excl_vat'] = df_monthly['total'] / 1.05  # Assuming 5% VAT
-    
-    # Handle case when vat column doesn't exist
-    if 'vat' not in df_monthly.columns:
-        df_monthly['vat'] = df_monthly['total'] - df_monthly['amount_excl_vat']
-    
+    df_monthly['amount_excl_vat'] = df_monthly.get('amount_excl_vat', df_monthly['total'] / 1.05)
+    df_monthly['vat'] = df_monthly['total'] - df_monthly['amount_excl_vat']
     monthly_revenue = df_monthly.groupby('month').agg(
         revenue=('total', 'sum'),
         vat=('vat', 'sum'),
         amount_excl_vat=('amount_excl_vat', 'sum')
     ).reset_index()
-    
     revenue_trend = go.Figure()
-    revenue_trend.add_trace(go.Bar(
-        x=monthly_revenue['month'],
-        y=monthly_revenue['amount_excl_vat'],
-        name='Base Amount',
-        marker_color=honey_colors['primary']
-    ))
-    revenue_trend.add_trace(go.Bar(
-        x=monthly_revenue['month'],
-        y=monthly_revenue['vat'],
-        name='VAT',
-        marker_color=honey_colors['warning']
-    ))
+    revenue_trend.add_trace(go.Bar(x=monthly_revenue['month'], y=monthly_revenue['amount_excl_vat'],
+                                   name='Base Amount', marker_color=honey_colors['primary']))
+    revenue_trend.add_trace(go.Bar(x=monthly_revenue['month'], y=monthly_revenue['vat'],
+                                   name='VAT', marker_color=honey_colors['warning']))
     revenue_trend.update_layout(
         barmode='stack',
         title='Monthly Revenue Trend',
@@ -681,132 +673,120 @@ def update_dashboard(data, start_date, end_date):
         yaxis_title='Revenue (AED)',
         plot_bgcolor=honey_colors['background'],
         paper_bgcolor=honey_colors['card_bg'],
-        font=dict(color=honey_colors['text_dark']),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
-    )
-    
-    # STEP 1: Replace your Product Distribution section in the update_dashboard callback
-
-# Product Distribution with honey styling
-    if 'product' in filtered_df.columns:
-
-        product_qty = filtered_df.groupby('product')['qty'].sum().reset_index()
-        product_qty = product_qty.sort_values('product')  # Sort alphabetically
-    
-        product_dist = px.pie(
-        product_qty, 
-        names='product', 
-        values='qty',
-        title='Product Quantity Distribution',
-        color_discrete_sequence=honey_chart_colors
-    )
-    
-    # Add these lines to make it stable
-        product_dist.update_traces(rotation=90)  # Fixed starting position
-        product_dist.update_layout(
-        plot_bgcolor=honey_colors['background'],
-        paper_bgcolor=honey_colors['card_bg'],
         font=dict(color=honey_colors['text_dark'])
     )
-    else:
-       product_dist = px.pie(title='Product data not available')
-       product_dist.update_layout(
+
+    # -------------------------------
+    # 🥧 Product Distribution (Pie) – Top 10
+    # -------------------------------
+    N = 10
+    product_qty_total = filtered_df.groupby('product')['qty'].sum()
+    top_products = product_qty_total.nlargest(N)
+    other_sum = product_qty_total.drop(top_products.index).sum()
+    product_qty_df = top_products.reset_index()
+    if other_sum > 0:
+        product_qty_df = pd.concat([
+            product_qty_df,
+            pd.DataFrame([{'product': 'Other', 'qty': other_sum}])
+        ])
+
+    product_color_map = {
+        name: honey_chart_colors[i % len(honey_chart_colors)]
+        for i, name in enumerate(product_qty_df['product'])
+    }
+
+    product_dist = px.pie(
+        product_qty_df,
+        names='product',
+        values='qty',
+        title='Top Products by Quantity',
+        color='product',
+        color_discrete_map=product_color_map
+    )
+    product_dist.update_layout(
+        paper_bgcolor=honey_colors['card_bg'],
         plot_bgcolor=honey_colors['background'],
-        paper_bgcolor=honey_colors['card_bg']
+        font=dict(color=honey_colors['text_dark']),
+        showlegend=True
+    )
+    product_dist.update_traces(textposition='inside', textinfo='percent+label')
+
+    # -------------------------------
+    # 📊 Product Revenue (Bar) – Top 10
+    # -------------------------------
+    product_rev_total = filtered_df.groupby('product')['total'].sum()
+    top_rev = product_rev_total.nlargest(N)
+    other_rev = product_rev_total.drop(top_rev.index).sum()
+    product_rev_df = top_rev.reset_index()
+    if other_rev > 0:
+        product_rev_df = pd.concat([
+            product_rev_df,
+            pd.DataFrame([{'product': 'Other', 'total': other_rev}])
+        ])
+
+    product_color_map = {
+        name: honey_chart_colors[i % len(honey_chart_colors)]
+        for i, name in enumerate(product_rev_df['product'])
+    }
+
+    product_rev_fig = px.bar(
+        product_rev_df,
+        x='product',
+        y='total',
+        title='Top Products by Revenue',
+        color='product',
+        color_discrete_map=product_color_map
+    )
+    product_rev_fig.update_layout(
+        paper_bgcolor=honey_colors['card_bg'],
+        plot_bgcolor=honey_colors['background'],
+        font=dict(color=honey_colors['text_dark']),
+        showlegend=False
     )
 
-# STEP 2: Replace your Customer Type Revenue section
+    # 📍 Location Revenue
+    loc_rev = filtered_df.groupby('customer_location')['total'].sum().reset_index()
+    loc_rev = loc_rev.sort_values('total', ascending=False)
+    location_fig = px.bar(
+        loc_rev,
+        x='customer_location',
+        y='total',
+        title='Revenue by Location',
+        color='total',
+        color_continuous_scale=[[0, honey_colors['secondary']], [1, honey_colors['primary']]]
+    )
+    location_fig.update_layout(
+        paper_bgcolor=honey_colors['card_bg'],
+        plot_bgcolor=honey_colors['background'],
+        font=dict(color=honey_colors['text_dark']),
+        showlegend=False
+    )
 
-# Customer Type Revenue with honey styling
+    # 👥 Customer Type Revenue
+    cust_type_rev = filtered_df.groupby('customer_type')['total'].sum().reset_index()
+    cust_type_rev = cust_type_rev.sort_values('total', ascending=False)
+    customer_color_map = {
+        name: honey_chart_colors[i % len(honey_chart_colors)]
+        for i, name in enumerate(cust_type_rev['customer_type'])
+    }
 
-    # Product Revenue with honey styling
-    if 'product' in filtered_df.columns:
-        product_revenue = filtered_df.groupby('product')['total'].sum().reset_index()
-        product_revenue = product_revenue.sort_values('total', ascending=False)
-        
-        product_rev_fig = px.bar(
-            product_revenue,
-            x='product',
-            y='total',
-            title='Revenue by Product',
-            color='total',
-            color_continuous_scale=[[0, honey_colors['secondary']], [1, honey_colors['accent']]]
-        )
-        product_rev_fig.update_layout(
-            plot_bgcolor=honey_colors['background'],
-            paper_bgcolor=honey_colors['card_bg'],
-            font=dict(color=honey_colors['text_dark'])
-        )
-    else:
-        product_rev_fig = px.bar(title='Product revenue data not available')
-        product_rev_fig.update_layout(
-            plot_bgcolor=honey_colors['background'],
-            paper_bgcolor=honey_colors['card_bg']
-        )
-    
-    # Location Revenue with honey styling
-    if 'customer_location' in filtered_df.columns:
-        location_revenue = filtered_df.groupby('customer_location')['total'].sum().reset_index()
-        location_revenue = location_revenue.sort_values('total', ascending=False)
-        
-        location_fig = px.bar(
-            location_revenue,
-            x='customer_location',
-            y='total',
-            title='Revenue by Location',
-            color='total',
-            color_continuous_scale=[[0, honey_colors['secondary']], [1, honey_colors['primary']]]
-        )
-        location_fig.update_layout(
-            plot_bgcolor=honey_colors['background'],
-            paper_bgcolor=honey_colors['card_bg'],
-            font=dict(color=honey_colors['text_dark'])
-        )
-    else:
-        location_fig = px.bar(title='Location data not available')
-        location_fig.update_layout(
-            plot_bgcolor=honey_colors['background'],
-            paper_bgcolor=honey_colors['card_bg']
-        )
-    
-    # Customer Type Revenue with honey styling
-    if 'customer_type' in filtered_df.columns:
-       type_revenue = filtered_df.groupby('customer_type')['total'].sum().reset_index()
-       type_revenue = type_revenue.sort_values('customer_type')  # Sort alphabetically
-    
-       type_fig = px.pie(
-       type_revenue,
+    type_fig = px.pie(
+        cust_type_rev,
         names='customer_type',
         values='total',
         title='Revenue by Customer Type',
-        color_discrete_sequence=honey_chart_colors
+        color='customer_type',
+        color_discrete_map=customer_color_map
     )
-       type_fig.update_traces(rotation=90)  # Fixed starting position
-       type_fig.update_layout(
-        plot_bgcolor=honey_colors['background'],
+    type_fig.update_layout(
         paper_bgcolor=honey_colors['card_bg'],
-        font=dict(color=honey_colors['text_dark'])
-    )
-    else:
-       type_fig = px.pie(
-        pd.DataFrame({'type': ['Unknown'], 'value': [1]}),
-        names='type',
-        values='value',
-        title='Customer Type Data Not Available'
-    )
-       type_fig.update_layout(
         plot_bgcolor=honey_colors['background'],
-        paper_bgcolor=honey_colors['card_bg']
+        font=dict(color=honey_colors['text_dark']),
+        showlegend=True
     )
-    
-    
-    # Profit Margin Analysis with honey styling
+    type_fig.update_traces(textposition='inside', textinfo='percent+label')
+
+    # 📈 Profit Margin
     if 'profit' in filtered_df.columns and 'amount_excl_vat' in filtered_df.columns:
         df_profit = filtered_df.copy()
         df_profit['month'] = df_profit['invoice_date'].dt.strftime('%Y-%m')
@@ -815,51 +795,31 @@ def update_dashboard(data, start_date, end_date):
             profit=('profit', 'sum')
         ).reset_index()
         profit_data['margin'] = profit_data['profit'] / profit_data['revenue'] * 100
-        
+
         profit_fig = make_subplots(specs=[[{"secondary_y": True}]])
-        
-        profit_fig.add_trace(
-            go.Bar(x=profit_data['month'], y=profit_data['profit'], name="Profit", 
-                   marker_color=honey_colors['success']),
-            secondary_y=False
-        )
-        
-        profit_fig.add_trace(
-            go.Scatter(x=profit_data['month'], y=profit_data['margin'], name="Margin %", 
-                      line=dict(color=honey_colors['accent'], width=3)),
-            secondary_y=True
-        )
-        
+        profit_fig.add_trace(go.Bar(x=profit_data['month'], y=profit_data['profit'],
+                                    name="Profit", marker_color=honey_colors['success']), secondary_y=False)
+        profit_fig.add_trace(go.Scatter(x=profit_data['month'], y=profit_data['margin'],
+                                        name="Margin %", line=dict(color=honey_colors['accent'], width=3)), secondary_y=True)
         profit_fig.update_layout(
             title_text="Monthly Profit and Margin",
-            plot_bgcolor=honey_colors['background'],
             paper_bgcolor=honey_colors['card_bg'],
-            font=dict(color=honey_colors['text_dark']),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            )
+            plot_bgcolor=honey_colors['background'],
+            font=dict(color=honey_colors['text_dark'])
         )
-        
         profit_fig.update_yaxes(title_text="Profit (AED)", secondary_y=False)
         profit_fig.update_yaxes(title_text="Margin (%)", secondary_y=True)
     else:
         profit_fig = px.scatter(title="Profit Data Not Available")
         profit_fig.update_layout(
-            plot_bgcolor=honey_colors['background'],
-            paper_bgcolor=honey_colors['card_bg']
+            paper_bgcolor=honey_colors['card_bg'],
+            plot_bgcolor=honey_colors['background']
         )
-    
-    # Data Table
-    table_df = filtered_df.copy()
-    
-    # Prepare table data with safe column access
+
+    # 📄 Invoice Table
     table_data = []
-    for _, row in table_df.iterrows():
-        table_row = {
+    for _, row in filtered_df.iterrows():
+        table_data.append({
             'invoice_id': row.get('invoice_id', 'N/A'),
             'invoice_date_str': row['invoice_date'].strftime('%Y-%m-%d') if pd.notna(row.get('invoice_date')) else 'N/A',
             'customer_name': row.get('customer_name', 'N/A'),
@@ -868,12 +828,9 @@ def update_dashboard(data, start_date, end_date):
             'qty': row.get('qty', 0),
             'total_str': f"AED {row.get('total', 0):,.2f}",
             'payment_status': row.get('payment_status', 'N/A')
-        }
-        table_data.append(table_row)
-    
-    return total_revenue, invoice_count, avg_invoice, payment_rate, revenue_trend, product_dist, product_rev_fig, location_fig, type_fig, profit_fig, table_data
+        })
 
-# Toggle table visibility callback
+    return total_revenue, invoice_count, avg_invoice, payment_rate, revenue_trend, product_dist, product_rev_fig, location_fig, type_fig, profit_fig, table_data# Toggle table visibility callback
 @app.callback(
     Output('table-container', 'style'),
     [Input('toggle-table-button', 'n_clicks')],

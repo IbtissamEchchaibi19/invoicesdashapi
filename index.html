@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Processing Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1em;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab.active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .tab-content {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #f8f9ff, #e8f0ff);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(45deg, #f0f4ff, #e0ecff);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: linear-gradient(45deg, #f0fff4, #e6ffed);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .invoices-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .invoice-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .invoice-item:hover {
+            background: #e9ecef;
+        }
+
+        .invoice-item:last-child {
+            border-bottom: none;
+        }
+
+        .invoice-info {
+            flex: 1;
+        }
+
+        .invoice-id {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .invoice-filename {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .checkbox {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .dashboard-container {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            height: 800px;
+        }
+
+        .dashboard-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .health-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .health-item {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e0e6ff;
+        }
+
+        .health-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .health-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧾 Invoice Processing Dashboard</h1>
+            <p>Upload, process, and manage your invoices with ease</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('upload')">📤 Upload Invoices</button>
+            <button class="tab" onclick="showTab('manage')">📋 Manage Invoices</button>
+            <button class="tab" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button class="tab" onclick="showTab('health')">🏥 Health Check</button>
+        </div>
+
+        <!-- Upload Tab -->
+        <div id="upload" class="tab-content active">
+            <h2>📤 Upload Invoice PDFs</h2>
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div style="font-size: 3em; margin-bottom: 10px;">📁</div>
+                <p style="font-size: 1.2em; margin-bottom: 10px;">Click here or drag & drop PDF files</p>
+                <p style="color: #666;">Supports multiple PDF files</p>
+                <input type="file" id="fileInput" class="file-input" multiple accept=".pdf">
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn" onclick="uploadFiles()" id="uploadBtn" disabled>
+                    📤 Upload & Process Files
+                </button>
+            </div>
+            
+            <div class="loading" id="uploadLoading">
+                <div class="spinner"></div>
+                <p>Processing invoices...</p>
+            </div>
+            
+            <div id="uploadStatus"></div>
+        </div>
+
+        <!-- Manage Tab -->
+        <div id="manage" class="tab-content">
+            <h2>📋 Manage Invoices</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button class="btn" onclick="loadInvoices()">🔄 Refresh List</button>
+                <button class="btn btn-danger" onclick="deleteSelected()" id="deleteBtn" disabled>
+                    🗑️ Delete Selected
+                </button>
+            </div>
+            
+            <div class="loading" id="manageLoading">
+                <div class="spinner"></div>
+                <p>Loading invoices...</p>
+            </div>
+            
+            <div id="invoicesList" class="invoices-list"></div>
+            <div id="manageStatus"></div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content">
+            <h2>📊 Analytics Dashboard</h2>
+            <div class="dashboard-container">
+                <iframe 
+                    src="https://invoicesdashapi.onrender.com/dash_app/" 
+                    class="dashboard-iframe"
+                    title="Invoice Analytics Dashboard">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Health Tab -->
+        <div id="health" class="tab-content">
+            <h2>🏥 System Health Check</h2>
+            <button class="btn" onclick="checkHealth()">🔄 Check Health Status</button>
+            
+            <div class="loading" id="healthLoading">
+                <div class="spinner"></div>
+                <p>Checking system health...</p>
+            </div>
+            
+            <div id="healthStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://invoicesdashapi.onrender.com';
+        let selectedInvoices = new Set();
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Auto-load data for certain tabs
+            if (tabName === 'manage') {
+                loadInvoices();
+            } else if (tabName === 'health') {
+                checkHealth();
+            }
+        }
+
+        // File upload handling
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.querySelector('.upload-area');
+        const uploadBtn = document.getElementById('uploadBtn');
+
+        fileInput.addEventListener('change', function() {
+            updateUploadButton();
+        });
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            updateUploadButton();
+        });
+
+        function updateUploadButton() {
+            const hasFiles = fileInput.files.length > 0;
+            uploadBtn.disabled = !hasFiles;
+            uploadBtn.textContent = hasFiles ? 
+                `📤 Upload & Process ${fileInput.files.length} file(s)` : 
+                '📤 Upload & Process Files';
+        }
+
+        // Upload files
+        async function uploadFiles() {
+            if (fileInput.files.length === 0) {
+                showStatus('uploadStatus', 'Please select files to upload', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let file of fileInput.files) {
+                formData.append('files', file);
+            }
+
+            document.getElementById('uploadLoading').style.display = 'block';
+            uploadBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/upload-invoices/`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    let message = `✅ ${result.message}\n`;
+                    message += `📊 Total new records: ${result.total_new_records}\n`;
+                    message += `📁 Total records in system: ${result.total_records}`;
+                    
+                    if (result.skipped_files && result.skipped_files.length > 0) {
+                        message += `\n⏭️ Skipped files: ${result.skipped_files.length}`;
+                    }
+                    
+                    if (result.errors && result.errors.length > 0) {
+                        message += `\n❌ Errors: ${result.errors.join(', ')}`;
+                    }
+                    
+                    showStatus('uploadStatus', message, 'success');
+                    
+                    // Reset form
+                    fileInput.value = '';
+                    updateUploadButton();
+                } else {
+                    showStatus('uploadStatus', `❌ ${result.detail || 'Upload failed'}`, 'error');
+                }
+            } catch (error) {
+                showStatus('uploadStatus', `❌ Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('uploadLoading').style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // Load invoices list
+        async function loadInvoices() {
+            document.getElementById('manageLoading').style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/invoices/`);
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayInvoices(result.invoices);
+                    showStatus('manageStatus', `📋 Found ${result.total_count} invoice(s)`, 'info');
+                } else {
+                    showStatus('manageStatus', `❌ ${result.detail || 'Failed to load invoices'}`, 'error');
+                }
+            } catch (error) {
+                showStatus('manageStatus', `❌ Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('manageLoading').style.display = 'none';
+            }
+        }
+
+        // Display invoices
+        function displayInvoices(invoices) {
+            const container = document.getElementById('invoicesList');
+            
+            if (invoices.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">No invoices found</p>';
+                return;
+            }
+
+            container.innerHTML = invoices.map(invoice => `
+                <div class="invoice-item">
+                    <input type="checkbox" class="checkbox" value="${invoice.id}" 
+                           onchange="toggleInvoiceSelection('${invoice.id}')">
+                    <div class="invoice-info">
+                        <div class="invoice-id">ID: ${invoice.id}</div>
+                        <div class="invoice-filename">📄 ${invoice.filename}</div>
+                        ${invoice.invoice_number ? `<div>📋 Invoice #: ${invoice.invoice_number}</div>` : ''}
+                        ${invoice.total_amount ? `<div>💰 Amount: ${invoice.total_amount}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Toggle invoice selection
+        function toggleInvoiceSelection(invoiceId) {
+            const checkbox = document.querySelector(`input[value="${invoiceId}"]`);
+            if (checkbox.checked) {
+                selectedInvoices.add(invoiceId);
+            } else {
+                selectedInvoices.delete(invoiceId);
+            }
+            
+            document.getElementById('deleteBtn').disabled = selectedInvoices.size === 0;
+        }
+
+        // Delete selected invoices
+        async function deleteSelected() {
+            if (selectedInvoices.size === 0) {
+                showStatus('manageStatus', '❌ Please select invoices to delete', 'error');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete ${selectedInvoices.size} invoice(s)?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/delete-invoices/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        invoice_ids: Array.from(selectedInvoices)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus('manageStatus', `✅ ${result.message}`, 'success');
+                    selectedInvoices.clear();
+                    loadInvoices(); // Refresh the list
+                } else {
+                    showStatus('manageStatus', `❌ ${result.detail || 'Delete failed'}`, 'error');
+                }
+            } catch (error) {
+                showStatus('manageStatus', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Health check
+        async function checkHealth() {
+            document.getElementById('healthLoading').style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/health/`);
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayHealthStatus(result);
+                } else {
+                    showStatus('healthStatus', `❌ Health check failed: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showStatus('healthStatus', `❌ Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('healthLoading').style.display = 'none';
+            }
+        }
+
+        // Display health status
+        function displayHealthStatus(health) {
+            const container = document.getElementById('healthStatus');
+            
+            const statusColor = health.status === 'healthy' ? '#28a745' : '#dc3545';
+            
+            container.innerHTML = `
+                <div class="status ${health.status === 'healthy' ? 'success' : 'error'}">
+                    <strong>System Status:</strong> ${health.status === 'healthy' ? '✅ Healthy' : '❌ Error'}
+                    <br><strong>Message:</strong> ${health.message}
+                </div>
+                
+                <div class="health-status">
+                    <div class="health-item">
+                        <div class="health-value">${health.csv_records || 0}</div>
+                        <div class="health-label">CSV Records</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-value">${health.total_pdf_files || 0}</div>
+                        <div class="health-label">PDF Files</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-value">${health.processed_files || 0}</div>
+                        <div class="health-label">Processed Files</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-value">${health.unprocessed_files || 0}</div>
+                        <div class="health-label">Unprocessed Files</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show status messages
+        function showStatus(containerId, message, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<div class="status ${type}">${message.replace(/\n/g, '<br>')}</div>`;
+        }
+
+        // Auto-load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth();
+        });
+    </script>
+</body>
+</html>
