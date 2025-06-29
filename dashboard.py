@@ -8,12 +8,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-
-
-
-# Global variable to track data version
-# Create the Dash app
-
 data_version = 0
 def increment_data_version():
     """Call this function when data is updated to trigger dashboard refresh"""
@@ -136,7 +130,49 @@ app.index_string = '''
     </body>
 </html>
 '''
-
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <style>
+            .card {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 10px;
+                text-align: center;
+                background-color: #f9f9f9;
+                min-width: 200px;
+            }
+            .card h3 {
+                margin: 0 0 10px 0;
+                color: #666;
+            }
+            .card h2 {
+                margin: 0;
+                color: #333;
+            }
+            /* Prevent plotly graphs from auto-resizing */
+            .js-plotly-plot {
+                width: 100% !important;
+                height: 400px !important;
+            }
+        </style>
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
 # Define the enhanced layout
 app.layout = html.Div([
     # Header with refresh button
