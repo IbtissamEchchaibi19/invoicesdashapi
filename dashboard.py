@@ -86,8 +86,6 @@ honey_colors = {
     'text_dark': '#2F2F2F',    # Dark gray
     'text_light': '#666666'    # Medium gray
 }
-
-# Custom CSS styles
 app.index_string = '''
 <!DOCTYPE html>
 <html>

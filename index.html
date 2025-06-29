@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice Processing Dashboard</title>
+    <title>Invoice Processing API - Frontend</title>
     <style>
         * {
             margin: 0;
@@ -15,195 +15,206 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: #333;
+            padding: 20px;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 30px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
             padding: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
         }
 
         .header h1 {
-            color: white;
-            font-size: 2.5em;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .header p {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.1em;
+            font-size: 1.1rem;
+            opacity: 0.9;
         }
 
-        .tabs {
+        .api-config {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .config-row {
             display: flex;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 5px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
         }
 
-        .tab {
+        .config-row label {
+            font-weight: 600;
+            min-width: 120px;
+        }
+
+        .config-row input {
             flex: 1;
-            padding: 15px 20px;
-            background: transparent;
-            border: none;
-            border-radius: 10px;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
         }
 
-        .tab:hover {
-            background: rgba(255, 255, 255, 0.1);
+        .config-row input:focus {
+            outline: none;
+            border-color: #2196F3;
         }
 
-        .tab.active {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .tab-content {
-            display: none;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+        .content {
             padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #f0f0f0;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+
+        .section h2 {
+            color: #333;
             margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.5s ease-in-out;
+        .section-icon {
+            width: 24px;
+            height: 24px;
+            background: #2196F3;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
+        .file-upload {
+            border: 3px dashed #2196F3;
+            border-radius: 12px;
             padding: 40px;
             text-align: center;
-            margin-bottom: 20px;
-            background: linear-gradient(45deg, #f8f9ff, #e8f0ff);
+            background: white;
             transition: all 0.3s ease;
             cursor: pointer;
         }
 
-        .upload-area:hover {
-            border-color: #764ba2;
-            background: linear-gradient(45deg, #f0f4ff, #e0ecff);
-            transform: translateY(-2px);
+        .file-upload:hover {
+            background: #f8f9ff;
+            border-color: #1976D2;
         }
 
-        .upload-area.dragover {
-            border-color: #28a745;
-            background: linear-gradient(45deg, #f0fff4, #e6ffed);
+        .file-upload.dragover {
+            background: #e3f2fd;
+            border-color: #1976D2;
         }
 
         .file-input {
             display: none;
         }
 
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
+            padding: 12px 24px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
             font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            margin: 5px;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
         }
 
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
+        .btn:active {
+            transform: translateY(0);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            background: linear-gradient(45deg, #f44336, #ff5722);
         }
 
         .btn-danger:hover {
-            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
         }
 
-        .status {
+        .btn-success {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .response-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
             margin-top: 20px;
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: 500;
-        }
-
-        .status.success {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .status.error {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .status.info {
-            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .invoices-list {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
             max-height: 400px;
             overflow-y: auto;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+
+        .invoice-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
             border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 15px;
-            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 15px;
         }
 
         .invoice-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            border-radius: 5px;
-            margin-bottom: 5px;
-            transition: background 0.3s ease;
-        }
-
-        .invoice-item:hover {
-            background: #e9ecef;
         }
 
         .invoice-item:last-child {
@@ -214,351 +225,307 @@
             flex: 1;
         }
 
-        .invoice-id {
-            font-weight: bold;
-            color: #667eea;
+        .invoice-info h4 {
+            margin-bottom: 5px;
+            color: #333;
         }
 
-        .invoice-filename {
-            font-size: 0.9em;
+        .invoice-info small {
             color: #666;
         }
 
-        .checkbox {
-            margin-right: 10px;
-            transform: scale(1.2);
+        .delete-checkbox {
+            margin-right: 15px;
         }
 
-        .dashboard-container {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            height: 800px;
+        .selected-count {
+            background: #2196F3;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 10px 0;
+            display: inline-block;
         }
 
-        .dashboard-iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .health-status {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        .quick-links {
+            display: flex;
             gap: 15px;
-            margin-top: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
         }
 
-        .health-item {
-            background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            border: 1px solid #e0e6ff;
+        .quick-link {
+            padding: 10px 20px;
+            background: #e3f2fd;
+            color: #1976D2;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
         }
 
-        .health-value {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #667eea;
+        .quick-link:hover {
+            background: #2196F3;
+            color: white;
         }
 
-        .health-label {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 5px;
+        @media (max-width: 768px) {
+            .config-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .config-row label {
+                min-width: auto;
+                margin-bottom: 5px;
+            }
+
+            .quick-links {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🧾 Invoice Processing Dashboard</h1>
-            <p>Upload, process, and manage your invoices with ease</p>
+            <h1>🧾 Invoice Processing API</h1>
+            <p>Upload, Process, and Manage Your Invoices</p>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" onclick="showTab('upload')">📤 Upload Invoices</button>
-            <button class="tab" onclick="showTab('manage')">📋 Manage Invoices</button>
-            <button class="tab" onclick="showTab('dashboard')">📊 Dashboard</button>
-            <button class="tab" onclick="showTab('health')">🏥 Health Check</button>
-        </div>
-
-        <!-- Upload Tab -->
-        <div id="upload" class="tab-content active">
-            <h2>📤 Upload Invoice PDFs</h2>
-            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-                <div style="font-size: 3em; margin-bottom: 10px;">📁</div>
-                <p style="font-size: 1.2em; margin-bottom: 10px;">Click here or drag & drop PDF files</p>
-                <p style="color: #666;">Supports multiple PDF files</p>
-                <input type="file" id="fileInput" class="file-input" multiple accept=".pdf">
+        <div class="api-config">
+            <div class="config-row">
+                <label for="apiUrl">API Base URL:</label>
+                <input type="text" id="apiUrl" value="https://invoicesdashapi.onrender.com">
             </div>
-            
-            <div style="text-align: center;">
-                <button class="btn" onclick="uploadFiles()" id="uploadBtn" disabled>
-                    📤 Upload & Process Files
-                </button>
-            </div>
-            
-            <div class="loading" id="uploadLoading">
-                <div class="spinner"></div>
-                <p>Processing invoices...</p>
-            </div>
-            
-            <div id="uploadStatus"></div>
-        </div>
-
-        <!-- Manage Tab -->
-        <div id="manage" class="tab-content">
-            <h2>📋 Manage Invoices</h2>
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button class="btn" onclick="loadInvoices()">🔄 Refresh List</button>
-                <button class="btn btn-danger" onclick="deleteSelected()" id="deleteBtn" disabled>
-                    🗑️ Delete Selected
-                </button>
-            </div>
-            
-            <div class="loading" id="manageLoading">
-                <div class="spinner"></div>
-                <p>Loading invoices...</p>
-            </div>
-            
-            <div id="invoicesList" class="invoices-list"></div>
-            <div id="manageStatus"></div>
-        </div>
-
-        <!-- Dashboard Tab -->
-        <div id="dashboard" class="tab-content">
-            <h2>📊 Analytics Dashboard</h2>
-            <div class="dashboard-container">
-                <iframe 
-                    src="https://invoicesdashapi.onrender.com/dash_app/" 
-                    class="dashboard-iframe"
-                    title="Invoice Analytics Dashboard">
-                </iframe>
+            <div class="config-row">
+                <label for="status">Status:</label>
+                <span id="connectionStatus" style="color: #666;">Not checked</span>
+                <button class="btn" onclick="checkHealth()">Check Connection</button>
             </div>
         </div>
 
-        <!-- Health Tab -->
-        <div id="health" class="tab-content">
-            <h2>🏥 System Health Check</h2>
-            <button class="btn" onclick="checkHealth()">🔄 Check Health Status</button>
-            
-            <div class="loading" id="healthLoading">
-                <div class="spinner"></div>
-                <p>Checking system health...</p>
+        <div class="content">
+            <!-- Quick Links -->
+            <div class="section">
+                <h2><span class="section-icon">🔗</span>Quick Links</h2>
+                <div class="quick-links">
+                    <a href="#" class="quick-link" onclick="openDashboard()">📊 View Dashboard</a>
+                    <a href="#" class="quick-link" onclick="openApiDocs()">📖 API Documentation</a>
+                    <a href="#" class="quick-link" onclick="checkHealth()">💚 Health Check</a>
+                </div>
             </div>
-            
-            <div id="healthStatus"></div>
+
+            <!-- Upload Section -->
+            <div class="section">
+                <h2><span class="section-icon">📤</span>Upload Invoices</h2>
+                <div class="file-upload" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" class="file-input" multiple accept=".pdf">
+                    <div class="upload-text">📄 Click to select PDF files or drag and drop</div>
+                    <div class="upload-hint">Supports multiple PDF files</div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button class="btn" onclick="uploadFiles()">🚀 Upload & Process</button>
+                    <span id="selectedFiles" style="margin-left: 15px; color: #666;"></span>
+                </div>
+                <div class="loading" id="uploadLoading">Processing invoices...</div>
+                <div class="response-area" id="uploadResponse"></div>
+            </div>
+
+            <!-- List Invoices Section -->
+            <div class="section">
+                <h2><span class="section-icon">📋</span>Manage Invoices</h2>
+                <button class="btn btn-success" onclick="loadInvoices()">🔄 Refresh Invoice List</button>
+                <button class="btn btn-danger" onclick="deleteSelected()" id="deleteBtn" disabled>🗑️ Delete Selected</button>
+                <div id="selectedCount" class="selected-count" style="display: none;">0 invoices selected</div>
+                <div class="loading" id="listLoading">Loading invoices...</div>
+                <div class="invoice-list" id="invoiceList"></div>
+                <div class="response-area" id="listResponse"></div>
+            </div>
+
+            <!-- API Testing Section -->
+            <div class="section">
+                <h2><span class="section-icon">🔧</span>API Testing</h2>
+                <button class="btn" onclick="testEndpoint('/')">🏠 Root Endpoint</button>
+                <button class="btn" onclick="testEndpoint('/health/')">💚 Health Check</button>
+                <button class="btn" onclick="testEndpoint('/invoices/')">📋 List All Invoices</button>
+                <button class="btn" onclick="refreshDashboard()">🔄 Refresh Dashboard</button>
+                <div class="response-area" id="testResponse"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_BASE = 'https://invoicesdashapi.onrender.com';
+        let apiBaseUrl = 'https://invoicesdashapi.onrender.com';
         let selectedInvoices = new Set();
 
-        // Tab switching
-        function showTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Remove active class from all tab buttons
-            document.querySelectorAll('.tab').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-            
-            // Auto-load data for certain tabs
-            if (tabName === 'manage') {
-                loadInvoices();
-            } else if (tabName === 'health') {
-                checkHealth();
-            }
-        }
+        // Update API URL when changed
+        document.getElementById('apiUrl').addEventListener('change', function() {
+            apiBaseUrl = this.value.replace(/\/$/, ''); // Remove trailing slash
+        });
 
         // File upload handling
         const fileInput = document.getElementById('fileInput');
-        const uploadArea = document.querySelector('.upload-area');
-        const uploadBtn = document.getElementById('uploadBtn');
+        const fileUpload = document.querySelector('.file-upload');
+        const selectedFilesSpan = document.getElementById('selectedFiles');
 
         fileInput.addEventListener('change', function() {
-            updateUploadButton();
+            updateSelectedFiles();
         });
 
         // Drag and drop functionality
-        uploadArea.addEventListener('dragover', function(e) {
+        fileUpload.addEventListener('dragover', function(e) {
             e.preventDefault();
-            uploadArea.classList.add('dragover');
+            this.classList.add('dragover');
         });
 
-        uploadArea.addEventListener('dragleave', function(e) {
+        fileUpload.addEventListener('dragleave', function(e) {
             e.preventDefault();
-            uploadArea.classList.remove('dragover');
+            this.classList.remove('dragover');
         });
 
-        uploadArea.addEventListener('drop', function(e) {
+        fileUpload.addEventListener('drop', function(e) {
             e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            fileInput.files = e.dataTransfer.files;
-            updateUploadButton();
+            this.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            fileInput.files = files;
+            updateSelectedFiles();
         });
 
-        function updateUploadButton() {
-            const hasFiles = fileInput.files.length > 0;
-            uploadBtn.disabled = !hasFiles;
-            uploadBtn.textContent = hasFiles ? 
-                `📤 Upload & Process ${fileInput.files.length} file(s)` : 
-                '📤 Upload & Process Files';
+        function updateSelectedFiles() {
+            const files = fileInput.files;
+            if (files.length > 0) {
+                selectedFilesSpan.textContent = `${files.length} file(s) selected: ${Array.from(files).map(f => f.name).join(', ')}`;
+            } else {
+                selectedFilesSpan.textContent = '';
+            }
         }
 
-        // Upload files
         async function uploadFiles() {
-            if (fileInput.files.length === 0) {
-                showStatus('uploadStatus', 'Please select files to upload', 'error');
+            const files = fileInput.files;
+            if (files.length === 0) {
+                alert('Please select at least one PDF file');
                 return;
             }
 
             const formData = new FormData();
-            for (let file of fileInput.files) {
+            for (let file of files) {
+                if (!file.name.toLowerCase().endsWith('.pdf')) {
+                    alert(`${file.name} is not a PDF file. Only PDF files are allowed.`);
+                    return;
+                }
                 formData.append('files', file);
             }
 
-            document.getElementById('uploadLoading').style.display = 'block';
-            uploadBtn.disabled = true;
+            showLoading('uploadLoading', true);
+            document.getElementById('uploadResponse').textContent = '';
 
             try {
-                const response = await fetch(`${API_BASE}/upload-invoices/`, {
+                const response = await fetch(`${apiBaseUrl}/upload-invoices/`, {
                     method: 'POST',
                     body: formData
                 });
 
                 const result = await response.json();
-
+                document.getElementById('uploadResponse').textContent = JSON.stringify(result, null, 2);
+                
                 if (response.ok) {
-                    let message = `✅ ${result.message}\n`;
-                    message += `📊 Total new records: ${result.total_new_records}\n`;
-                    message += `📁 Total records in system: ${result.total_records}`;
-                    
-                    if (result.skipped_files && result.skipped_files.length > 0) {
-                        message += `\n⏭️ Skipped files: ${result.skipped_files.length}`;
-                    }
-                    
-                    if (result.errors && result.errors.length > 0) {
-                        message += `\n❌ Errors: ${result.errors.join(', ')}`;
-                    }
-                    
-                    showStatus('uploadStatus', message, 'success');
-                    
-                    // Reset form
+                    // Clear file selection after successful upload
                     fileInput.value = '';
-                    updateUploadButton();
-                } else {
-                    showStatus('uploadStatus', `❌ ${result.detail || 'Upload failed'}`, 'error');
+                    updateSelectedFiles();
+                    // Auto-refresh invoice list
+                    loadInvoices();
                 }
             } catch (error) {
-                showStatus('uploadStatus', `❌ Error: ${error.message}`, 'error');
+                document.getElementById('uploadResponse').textContent = `Error: ${error.message}`;
             } finally {
-                document.getElementById('uploadLoading').style.display = 'none';
-                uploadBtn.disabled = false;
+                showLoading('uploadLoading', false);
             }
         }
 
-        // Load invoices list
         async function loadInvoices() {
-            document.getElementById('manageLoading').style.display = 'block';
-            
+            showLoading('listLoading', true);
+            selectedInvoices.clear();
+            updateDeleteButton();
+
             try {
-                const response = await fetch(`${API_BASE}/invoices/`);
+                const response = await fetch(`${apiBaseUrl}/invoices/`);
                 const result = await response.json();
 
                 if (response.ok) {
-                    displayInvoices(result.invoices);
-                    showStatus('manageStatus', `📋 Found ${result.total_count} invoice(s)`, 'info');
+                    displayInvoices(result.invoices || []);
+                    document.getElementById('listResponse').textContent = `Total: ${result.total_count || 0} invoices`;
                 } else {
-                    showStatus('manageStatus', `❌ ${result.detail || 'Failed to load invoices'}`, 'error');
+                    document.getElementById('listResponse').textContent = JSON.stringify(result, null, 2);
                 }
             } catch (error) {
-                showStatus('manageStatus', `❌ Error: ${error.message}`, 'error');
+                document.getElementById('listResponse').textContent = `Error: ${error.message}`;
             } finally {
-                document.getElementById('manageLoading').style.display = 'none';
+                showLoading('listLoading', false);
             }
         }
 
-        // Display invoices
         function displayInvoices(invoices) {
-            const container = document.getElementById('invoicesList');
+            const listElement = document.getElementById('invoiceList');
             
             if (invoices.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #666;">No invoices found</p>';
+                listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No invoices found</div>';
                 return;
             }
 
-            container.innerHTML = invoices.map(invoice => `
+            listElement.innerHTML = invoices.map(invoice => `
                 <div class="invoice-item">
-                    <input type="checkbox" class="checkbox" value="${invoice.id}" 
-                           onchange="toggleInvoiceSelection('${invoice.id}')">
+                    <input type="checkbox" class="delete-checkbox" value="${invoice.invoice_id || invoice.id}" 
+                           onchange="toggleInvoiceSelection(this)">
                     <div class="invoice-info">
-                        <div class="invoice-id">ID: ${invoice.id}</div>
-                        <div class="invoice-filename">📄 ${invoice.filename}</div>
-                        ${invoice.invoice_number ? `<div>📋 Invoice #: ${invoice.invoice_number}</div>` : ''}
-                        ${invoice.total_amount ? `<div>💰 Amount: ${invoice.total_amount}</div>` : ''}
+                        <h4>${invoice.filename || 'Unknown filename'}</h4>
+                        <small>
+                            ID: ${invoice.invoice_id || invoice.id || 'N/A'} | 
+                            ${invoice.invoice_date || ''} | 
+                            ${invoice.customer_name || ''} | 
+                            Total: ${invoice.total || 'N/A'}
+                        </small>
                     </div>
                 </div>
             `).join('');
         }
 
-        // Toggle invoice selection
-        function toggleInvoiceSelection(invoiceId) {
-            const checkbox = document.querySelector(`input[value="${invoiceId}"]`);
+        function toggleInvoiceSelection(checkbox) {
             if (checkbox.checked) {
-                selectedInvoices.add(invoiceId);
+                selectedInvoices.add(checkbox.value);
             } else {
-                selectedInvoices.delete(invoiceId);
+                selectedInvoices.delete(checkbox.value);
             }
-            
-            document.getElementById('deleteBtn').disabled = selectedInvoices.size === 0;
+            updateDeleteButton();
         }
 
-        // Delete selected invoices
+        function updateDeleteButton() {
+            const deleteBtn = document.getElementById('deleteBtn');
+            const countElement = document.getElementById('selectedCount');
+            
+            if (selectedInvoices.size > 0) {
+                deleteBtn.disabled = false;
+                countElement.style.display = 'inline-block';
+                countElement.textContent = `${selectedInvoices.size} invoice(s) selected`;
+            } else {
+                deleteBtn.disabled = true;
+                countElement.style.display = 'none';
+            }
+        }
+
         async function deleteSelected() {
             if (selectedInvoices.size === 0) {
-                showStatus('manageStatus', '❌ Please select invoices to delete', 'error');
+                alert('Please select at least one invoice to delete');
                 return;
             }
 
-            if (!confirm(`Are you sure you want to delete ${selectedInvoices.size} invoice(s)?`)) {
+            if (!confirm(`Are you sure you want to delete ${selectedInvoices.size} invoice(s)? This action cannot be undone.`)) {
                 return;
             }
 
             try {
-                const response = await fetch(`${API_BASE}/delete-invoices/`, {
+                const response = await fetch(`${apiBaseUrl}/delete-invoices/`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
@@ -569,81 +536,79 @@
                 });
 
                 const result = await response.json();
-
-                if (response.ok) {
-                    showStatus('manageStatus', `✅ ${result.message}`, 'success');
-                    selectedInvoices.clear();
-                    loadInvoices(); // Refresh the list
-                } else {
-                    showStatus('manageStatus', `❌ ${result.detail || 'Delete failed'}`, 'error');
-                }
-            } catch (error) {
-                showStatus('manageStatus', `❌ Error: ${error.message}`, 'error');
-            }
-        }
-
-        // Health check
-        async function checkHealth() {
-            document.getElementById('healthLoading').style.display = 'block';
-            
-            try {
-                const response = await fetch(`${API_BASE}/health/`);
-                const result = await response.json();
-
-                if (response.ok) {
-                    displayHealthStatus(result);
-                } else {
-                    showStatus('healthStatus', `❌ Health check failed: ${result.detail}`, 'error');
-                }
-            } catch (error) {
-                showStatus('healthStatus', `❌ Error: ${error.message}`, 'error');
-            } finally {
-                document.getElementById('healthLoading').style.display = 'none';
-            }
-        }
-
-        // Display health status
-        function displayHealthStatus(health) {
-            const container = document.getElementById('healthStatus');
-            
-            const statusColor = health.status === 'healthy' ? '#28a745' : '#dc3545';
-            
-            container.innerHTML = `
-                <div class="status ${health.status === 'healthy' ? 'success' : 'error'}">
-                    <strong>System Status:</strong> ${health.status === 'healthy' ? '✅ Healthy' : '❌ Error'}
-                    <br><strong>Message:</strong> ${health.message}
-                </div>
+                document.getElementById('listResponse').textContent = JSON.stringify(result, null, 2);
                 
-                <div class="health-status">
-                    <div class="health-item">
-                        <div class="health-value">${health.csv_records || 0}</div>
-                        <div class="health-label">CSV Records</div>
-                    </div>
-                    <div class="health-item">
-                        <div class="health-value">${health.total_pdf_files || 0}</div>
-                        <div class="health-label">PDF Files</div>
-                    </div>
-                    <div class="health-item">
-                        <div class="health-value">${health.processed_files || 0}</div>
-                        <div class="health-label">Processed Files</div>
-                    </div>
-                    <div class="health-item">
-                        <div class="health-value">${health.unprocessed_files || 0}</div>
-                        <div class="health-label">Unprocessed Files</div>
-                    </div>
-                </div>
-            `;
+                if (response.ok) {
+                    // Refresh the list after successful deletion
+                    loadInvoices();
+                }
+            } catch (error) {
+                document.getElementById('listResponse').textContent = `Error: ${error.message}`;
+            }
         }
 
-        // Show status messages
-        function showStatus(containerId, message, type) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = `<div class="status ${type}">${message.replace(/\n/g, '<br>')}</div>`;
+        async function testEndpoint(endpoint) {
+            try {
+                const response = await fetch(`${apiBaseUrl}${endpoint}`);
+                const result = await response.json();
+                document.getElementById('testResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('testResponse').textContent = `Error: ${error.message}`;
+            }
         }
 
-        // Auto-load initial data
-        document.addEventListener('DOMContentLoaded', function() {
+        async function checkHealth() {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.textContent = 'Checking...';
+            statusElement.style.color = '#f39c12';
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/health/`);
+                const result = await response.json();
+                
+                if (response.ok && result.status === 'healthy') {
+                    statusElement.textContent = 'Connected ✅';
+                    statusElement.style.color = '#27ae60';
+                } else {
+                    statusElement.textContent = 'Error ❌';
+                    statusElement.style.color = '#e74c3c';
+                }
+                
+                document.getElementById('testResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                statusElement.textContent = 'Connection Failed ❌';
+                statusElement.style.color = '#e74c3c';
+                document.getElementById('testResponse').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function openDashboard() {
+            window.open(`${apiBaseUrl}/dash_app/`, '_blank');
+        }
+
+        function openApiDocs() {
+            window.open(`${apiBaseUrl}/docs`, '_blank');
+        }
+
+        async function refreshDashboard() {
+            try {
+                const response = await fetch(`${apiBaseUrl}/refresh-dashboard/`);
+                const result = await response.json();
+                document.getElementById('testResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('testResponse').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function showLoading(elementId, show) {
+            const element = document.getElementById(elementId);
+            element.style.display = show ? 'block' : 'none';
+        }
+
+        // Load invoices on page load
+        window.addEventListener('load', function() {
             checkHealth();
+            loadInvoices();
         });
     </script>
 </body>
