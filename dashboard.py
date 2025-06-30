@@ -7,8 +7,47 @@ from dash.dependencies import Input, Output, State
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import requests
+from io import StringIO
+
+# Import GitHub storage configuration
+try:
+    from github_storage import GitHubCSVStorage, GitHubConfig
+    GITHUB_AVAILABLE = True
+except ImportError:
+    GITHUB_AVAILABLE = False
+    print("Warning: GitHub storage not available, falling back to local CSV")
 
 data_version = 0
+github_storage = None
+use_github_storage = False
+
+def initialize_github_storage():
+    """Initialize GitHub storage if environment variables are available"""
+    global github_storage, use_github_storage
+    
+    if not GITHUB_AVAILABLE:
+        print("⚠️  GitHub storage module not available")
+        use_github_storage = False
+        return False
+    
+    try:
+        config = GitHubConfig()
+        github_storage = config.get_storage_instance()
+        use_github_storage = True
+        print("✅ GitHub storage initialized successfully for dashboard")
+        return True
+    except ValueError as e:
+        print(f"⚠️  GitHub storage not configured: {e}")
+        print("📁 Dashboard falling back to local CSV storage")
+        use_github_storage = False
+        return False
+    except Exception as e:
+        print(f"❌ Error initializing GitHub storage: {e}")
+        print("📁 Dashboard falling back to local CSV storage")
+        use_github_storage = False
+        return False
+
 def increment_data_version():
     """Call this function when data is updated to trigger dashboard refresh"""
     global data_version
@@ -16,25 +55,54 @@ def increment_data_version():
     print(f"Data version incremented to: {data_version}")
 
 def load_invoice_data():
-    """Load invoice data from CSV file for dashboard visualization"""
+    """Load invoice data from GitHub CSV or local CSV file for dashboard visualization"""
+    global github_storage, use_github_storage
+    
+    # Define expected columns structure
+    expected_columns = [
+        'invoice_id', 'invoice_date', 'customer_name', 'customer_id',
+        'customer_location', 'customer_type', 'customer_trn', 'payment_status',
+        'due_date', 'product', 'qty', 'unit_price', 'total', 'amount_excl_vat',
+        'vat', 'profit', 'profit_margin', 'cost_price', 'days_to_payment'
+    ]
+    
     try:
-        # Check if file exists
-        if not os.path.exists('invoice_data.csv'):
-            print("CSV file not found, creating empty DataFrame")
-            return pd.DataFrame(columns=[
-                'invoice_id', 'invoice_date', 'customer_name', 'customer_id',
-                'customer_location', 'customer_type', 'customer_trn', 'payment_status',
-                'due_date', 'product', 'qty', 'unit_price', 'total', 'amount_excl_vat',
-                'vat', 'profit', 'profit_margin', 'cost_price', 'days_to_payment'
-            ])
+        df = None
         
-        # Load the CSV file
-        df = pd.read_csv('invoice_data.csv')
+        # Try GitHub first if configured
+        if use_github_storage and github_storage:
+            try:
+                print("📡 Attempting to load CSV from GitHub...")
+                df = github_storage.read_csv_as_dataframe()
+                if df is not None and not df.empty:
+                    print(f"✅ Successfully loaded {len(df)} records from GitHub CSV")
+                else:
+                    print("⚠️  GitHub CSV is empty or None, trying local fallback")
+                    df = None
+            except Exception as e:
+                print(f"❌ Error loading from GitHub: {e}")
+                print("📁 Falling back to local CSV")
+                df = None
         
-        # If CSV is empty, return empty DataFrame with proper columns
-        if df.empty:
-            print("CSV file is empty")
-            return df
+        # Fallback to local CSV if GitHub failed or not configured
+        if df is None:
+            if os.path.exists('invoice_data.csv'):
+                try:
+                    df = pd.read_csv('invoice_data.csv')
+                    print(f"📁 Successfully loaded {len(df)} records from local CSV")
+                except Exception as e:
+                    print(f"❌ Error loading local CSV: {e}")
+                    df = None
+            else:
+                print("📁 Local CSV file not found")
+        
+        # If no data could be loaded, return empty DataFrame
+        if df is None or df.empty:
+            print("📊 No data available, creating empty DataFrame")
+            return pd.DataFrame(columns=expected_columns)
+        
+        # Data processing and cleaning
+        print(f"📋 Processing {len(df)} records...")
         
         # Convert date columns to datetime
         date_columns = ['invoice_date', 'due_date']
@@ -57,18 +125,46 @@ def load_invoice_data():
                 axis=1
             )
         
-        print(f"Successfully loaded {len(df)} invoice records")
+        # Add any missing expected columns
+        for col in expected_columns:
+            if col not in df.columns:
+                if col in numeric_cols:
+                    df[col] = 0
+                else:
+                    df[col] = 'Unknown'
+        
+        print(f"✅ Successfully processed {len(df)} invoice records")
         return df
     
     except Exception as e:
-        print(f"Error loading CSV file: {e}")
+        print(f"❌ Critical error loading CSV data: {e}")
         # Return empty DataFrame with expected columns as fallback
-        return pd.DataFrame(columns=[
-            'invoice_id', 'invoice_date', 'customer_name', 'customer_id',
-            'customer_location', 'customer_type', 'customer_trn', 'payment_status',
-            'due_date', 'product', 'qty', 'unit_price', 'total', 'amount_excl_vat',
-            'vat', 'profit', 'profit_margin', 'cost_price', 'days_to_payment'
-        ])
+        return pd.DataFrame(columns=expected_columns)
+
+def get_data_source_info():
+    """Get information about the current data source"""
+    global github_storage, use_github_storage
+    
+    if use_github_storage and github_storage:
+        try:
+            csv_url = github_storage.get_raw_csv_url()
+            return {
+                "source": "GitHub Repository",
+                "url": csv_url,
+                "type": "Remote"
+            }
+        except:
+            pass
+    
+    return {
+        "source": "Local File System",
+        "url": "invoice_data.csv",
+        "type": "Local"
+    }
+
+
+
+initialize_github_storage()
 
 
 app = dash.Dash(__name__, 
