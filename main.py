@@ -15,6 +15,9 @@ from fastapi.middleware.wsgi import WSGIMiddleware
 from invoice_extractor import InvoiceExtractor
 from dashboard import app as dash_app
 
+# Import the new GitHub storage class
+from github_storage import GitHubCSVStorage, GitHubConfig
+
 # Initialize FastAPI
 app = FastAPI(title="Invoice Processing API", version="1.0.0")
 
@@ -45,12 +48,37 @@ class DeleteInvoiceResponse(BaseModel):
 
 # Global variables
 INVOICES_DIR = "invoices"
-CSV_FILE = "invoice_data.csv"
+CSV_FILE = "invoice_data.csv"  # Local fallback file
 PROCESSED_FILES_TRACKER = "processed_files.json"
 extractor = InvoiceExtractor()
 
+# GitHub storage instance (will be initialized on startup)
+github_storage = None
+use_github_storage = False
+
 # Ensure directories exist
 os.makedirs(INVOICES_DIR, exist_ok=True)
+
+def initialize_github_storage():
+    """Initialize GitHub storage if environment variables are available"""
+    global github_storage, use_github_storage
+    
+    try:
+        config = GitHubConfig()
+        github_storage = config.get_storage_instance()
+        use_github_storage = True
+        print("✅ GitHub storage initialized successfully")
+        return True
+    except ValueError as e:
+        print(f"⚠️  GitHub storage not configured: {e}")
+        print("📁 Falling back to local CSV storage")
+        use_github_storage = False
+        return False
+    except Exception as e:
+        print(f"❌ Error initializing GitHub storage: {e}")
+        print("📁 Falling back to local CSV storage")
+        use_github_storage = False
+        return False
 
 def get_file_hash(file_path: str) -> str:
     """Generate a hash for a file to track if it's been processed"""
@@ -113,22 +141,85 @@ def remove_file_from_tracker(filename: str):
         save_processed_files_tracker(tracker)
         print(f"Removed {filename} from processed files tracker")
 
+def read_csv_data() -> pd.DataFrame:
+    """Read CSV data from GitHub or local file"""
+    global github_storage, use_github_storage
+    
+    if use_github_storage and github_storage:
+        try:
+            df = github_storage.read_csv_as_dataframe()
+            if df is not None:
+                print("📡 Successfully read CSV from GitHub")
+                return df
+            else:
+                print("⚠️  No data found in GitHub, checking local file")
+        except Exception as e:
+            print(f"❌ Error reading from GitHub: {e}")
+            print("📁 Falling back to local CSV")
+    
+    # Fallback to local file
+    if os.path.exists(CSV_FILE):
+        try:
+            df = pd.read_csv(CSV_FILE)
+            print("📁 Successfully read local CSV file")
+            return df
+        except Exception as e:
+            print(f"Error reading local CSV: {e}")
+    
+    # Return empty DataFrame with expected columns
+    return pd.DataFrame(columns=extractor.csv_fields if hasattr(extractor, 'csv_fields') else [])
+
+def append_to_csv(new_data: List[dict]):
+    """Append new data to CSV (GitHub or local)"""
+    global github_storage, use_github_storage
+    
+    if not new_data:
+        return
+    
+    success = False
+    
+    # Try GitHub first if configured
+    if use_github_storage and github_storage:
+        try:
+            success = github_storage.append_data_to_csv(new_data)
+            if success:
+                print(f"📡 Successfully added {len(new_data)} records to GitHub CSV")
+            else:
+                print("❌ Failed to update GitHub CSV, trying local fallback")
+        except Exception as e:
+            print(f"❌ Error updating GitHub CSV: {e}")
+            print("📁 Falling back to local CSV")
+    
+    # Use local CSV if GitHub failed or not configured
+    if not success:
+        try:
+            new_df = pd.DataFrame(new_data)
+            
+            if os.path.exists(CSV_FILE):
+                # Append to existing CSV
+                new_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
+            else:
+                # Create new CSV with headers
+                new_df.to_csv(CSV_FILE, index=False)
+            
+            print(f"📁 Added {len(new_data)} records to local CSV")
+        except Exception as e:
+            print(f"Error appending to local CSV: {e}")
+            raise
+
 def get_invoice_records_by_ids(invoice_ids: List[str]) -> tuple:
     """
     Get invoice records from CSV by invoice IDs
     Returns: (found_records, not_found_ids)
     """
-    if not os.path.exists(CSV_FILE):
-        return [], invoice_ids
-    
     try:
-        df = pd.read_csv(CSV_FILE)
+        df = read_csv_data()
         
-        # Check if the CSV has an invoice_id column (adjust based on your CSV structure)
-        # You might need to adjust this based on how your invoice IDs are stored
+        if df.empty:
+            return [], invoice_ids
+        
+        # Check if the CSV has an invoice_id column
         if 'invoice_id' not in df.columns:
-            # If there's no invoice_id column, you might need to use filename or another identifier
-            # This is an example - adjust based on your actual CSV structure
             print("Warning: 'invoice_id' column not found in CSV. Using 'filename' instead.")
             id_column = 'filename' if 'filename' in df.columns else df.columns[0]
         else:
@@ -155,11 +246,14 @@ def delete_records_from_csv(invoice_ids: List[str]) -> int:
     Delete records from CSV by invoice IDs
     Returns: number of deleted records
     """
-    if not os.path.exists(CSV_FILE):
-        return 0
+    global github_storage, use_github_storage
     
     try:
-        df = pd.read_csv(CSV_FILE)
+        df = read_csv_data()
+        
+        if df.empty:
+            return 0
+        
         original_count = len(df)
         
         # Determine the ID column to use
@@ -172,9 +266,29 @@ def delete_records_from_csv(invoice_ids: List[str]) -> int:
         df_filtered = df[~df[id_column].astype(str).isin([str(id) for id in invoice_ids])]
         deleted_count = original_count - len(df_filtered)
         
-        # Save the updated CSV
-        df_filtered.to_csv(CSV_FILE, index=False)
-        print(f"Deleted {deleted_count} records from CSV")
+        if deleted_count == 0:
+            return 0
+        
+        # Update storage
+        success = False
+        
+        # Try GitHub first if configured
+        if use_github_storage and github_storage:
+            try:
+                success = github_storage.update_entire_csv(
+                    df_filtered, 
+                    f"Delete {deleted_count} invoice records"
+                )
+                if success:
+                    print(f"📡 Successfully deleted {deleted_count} records from GitHub CSV")
+            except Exception as e:
+                print(f"❌ Error deleting from GitHub CSV: {e}")
+                print("📁 Falling back to local CSV")
+        
+        # Use local CSV if GitHub failed or not configured
+        if not success:
+            df_filtered.to_csv(CSV_FILE, index=False)
+            print(f"📁 Deleted {deleted_count} records from local CSV")
         
         return deleted_count
         
@@ -206,61 +320,100 @@ def delete_pdf_files(filenames: List[str]) -> List[str]:
     
     return deleted_files
 
-def append_to_csv(new_data: List[dict]):
-    """Append new data to CSV file instead of rewriting"""
-    if not new_data:
-        return
-    
-    try:
-        new_df = pd.DataFrame(new_data)
-        
-        if os.path.exists(CSV_FILE):
-            # Append to existing CSV
-            new_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
-        else:
-            # Create new CSV with headers
-            new_df.to_csv(CSV_FILE, index=False)
-        
-        print(f"Added {len(new_data)} records to CSV")
-    except Exception as e:
-        print(f"Error appending to CSV: {e}")
-        raise
-
 def initialize_csv_if_needed():
     """Initialize CSV file with headers if it doesn't exist"""
+    global github_storage, use_github_storage
+    
+    # Check if we have data in GitHub
+    if use_github_storage and github_storage:
+        try:
+            df = github_storage.read_csv_as_dataframe()
+            if df is not None and not df.empty:
+                print("✅ CSV data exists in GitHub repository")
+                return
+        except Exception as e:
+            print(f"Error checking GitHub CSV: {e}")
+    
+    # Check local file
     if not os.path.exists(CSV_FILE):
         try:
-            df = pd.DataFrame(columns=extractor.csv_fields)
+            # Create empty CSV with headers
+            df = pd.DataFrame(columns=extractor.csv_fields if hasattr(extractor, 'csv_fields') else [])
             df.to_csv(CSV_FILE, index=False)
-            print("Initialized CSV file with headers")
+            print("📁 Initialized local CSV file with headers")
+            
+            # Also upload to GitHub if configured
+            if use_github_storage and github_storage:
+                try:
+                    github_storage.update_entire_csv(df, "Initialize CSV with headers")
+                    print("📡 Initialized GitHub CSV file with headers")
+                except Exception as e:
+                    print(f"Warning: Could not initialize GitHub CSV: {e}")
+                    
         except Exception as e:
             print(f"Error initializing CSV: {e}")
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize the application on startup"""
-    print("Starting Invoice Processing API...")
+    print("🚀 Starting Invoice Processing API...")
+    
+    # Initialize GitHub storage
+    initialize_github_storage()
+    
+    # Initialize CSV
     initialize_csv_if_needed()
+    
+    if use_github_storage:
+        print("🌟 Running with GitHub CSV storage")
+        if github_storage:
+            raw_url = github_storage.get_raw_csv_url()
+            print(f"📊 CSV URL: {raw_url}")
+    else:
+        print("📁 Running with local CSV storage")
 
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
+    storage_info = {
+        "type": "GitHub" if use_github_storage else "Local",
+        "csv_url": github_storage.get_raw_csv_url() if use_github_storage and github_storage else "local file"
+    }
+    
     return {
         "message": "Invoice Processing API",
+        "storage": storage_info,
         "endpoints": {
             "upload_invoices": "/upload-invoices/",
             "process_directory": "/process-directory/",
             "delete_invoices": "/delete-invoices/",
             "get_data": "/data/",
             "dashboard": "/dash_app/",
-            "health": "/health/"
+            "health": "/health/",
+            "csv_url": "/csv-url/"
         }
     }
+
+@app.get("/csv-url/")
+async def get_csv_url():
+    """Get the URL where CSV data can be accessed"""
+    if use_github_storage and github_storage:
+        return {
+            "csv_url": github_storage.get_raw_csv_url(),
+            "storage_type": "GitHub",
+            "note": "This URL provides direct access to the CSV data"
+        }
+    else:
+        return {
+            "csv_url": "Not available (using local storage)",
+            "storage_type": "Local",
+            "note": "CSV is stored locally and not accessible via URL"
+        }
 
 @app.get("/dashboard/")
 async def get_dashboard():
     """Redirect directly to the dashboard"""
-    return RedirectResponse(url="")
+    return RedirectResponse(url="/dash_app/")
 
 @app.delete("/delete-invoices/")
 async def delete_invoices(request: DeleteInvoiceRequest):
@@ -293,11 +446,10 @@ async def delete_invoices(request: DeleteInvoiceRequest):
         # Extract filenames from the found records and delete PDF files
         filenames_to_delete = []
         for record in found_records:
-            # Adjust this based on your CSV structure - might be 'filename', 'file_name', etc.
             filename = record.get('filename') or record.get('file_name') or record.get('source_file')
             if filename:
                 if not filename.endswith('.pdf'):
-                    filename += '.pdf'  # Add extension if missing
+                    filename += '.pdf'
                 filenames_to_delete.append(filename)
         
         # Delete PDF files
@@ -316,9 +468,8 @@ async def delete_invoices(request: DeleteInvoiceRequest):
         # Get remaining record count
         remaining_records = 0
         try:
-            if os.path.exists(CSV_FILE):
-                df = pd.read_csv(CSV_FILE)
-                remaining_records = len(df)
+            df = read_csv_data()
+            remaining_records = len(df)
         except Exception as e:
             print(f"Error counting remaining records: {e}")
         
@@ -342,15 +493,15 @@ async def list_invoices():
     List all invoices with their IDs for reference
     This helps users know which IDs they can delete
     """
-    if not os.path.exists(CSV_FILE):
-        return {
-            "message": "No invoice data found",
-            "invoices": [],
-            "total_count": 0
-        }
-    
     try:
-        df = pd.read_csv(CSV_FILE)
+        df = read_csv_data()
+        
+        if df.empty:
+            return {
+                "message": "No invoice data found",
+                "invoices": [],
+                "total_count": 0
+            }
         
         # Determine the ID column
         if 'invoice_id' not in df.columns:
@@ -375,7 +526,8 @@ async def list_invoices():
         return {
             "message": f"Found {len(invoices)} invoice(s)",
             "invoices": invoices,
-            "total_count": len(invoices)
+            "total_count": len(invoices),
+            "storage_type": "GitHub" if use_github_storage else "Local"
         }
         
     except Exception as e:
@@ -460,9 +612,8 @@ async def upload_invoices(files: Union[List[UploadFile], UploadFile] = File(...)
     # Get current total records
     total_records = 0
     try:
-        if os.path.exists(CSV_FILE):
-            df = pd.read_csv(CSV_FILE)
-            total_records = len(df)
+        df = read_csv_data()
+        total_records = len(df)
     except Exception as e:
         print(f"Error reading CSV for count: {e}")
     
@@ -472,6 +623,7 @@ async def upload_invoices(files: Union[List[UploadFile], UploadFile] = File(...)
         "skipped_files": skipped_files,
         "total_new_records": total_new_records,
         "total_records": total_records,
+        "storage_type": "GitHub" if use_github_storage else "Local",
         "errors": errors if errors else None
     }
 
@@ -501,23 +653,52 @@ async def health_check():
         
         # Get CSV record count
         csv_records = 0
+        csv_accessible = False
+        csv_location = "none"
+        
         try:
-            if os.path.exists(CSV_FILE):
-                df = pd.read_csv(CSV_FILE)
-                csv_records = len(df)
+            df = read_csv_data()
+            csv_records = len(df)
+            csv_accessible = True
+            if use_github_storage:
+                csv_location = "GitHub"
+            else:
+                csv_location = "Local"
         except Exception as e:
             print(f"Warning: Could not count CSV records: {e}")
+        
+        # GitHub storage status
+        github_status = {
+            "configured": use_github_storage,
+            "accessible": False,
+            "csv_url": None
+        }
+        
+        if use_github_storage and github_storage:
+            try:
+                # Test GitHub connectivity
+                content, sha = github_storage.get_file_content()
+                github_status["accessible"] = True
+                github_status["csv_url"] = github_storage.get_raw_csv_url()
+            except Exception as e:
+                print(f"GitHub storage not accessible: {e}")
         
         return {
             "status": "healthy",
             "message": "Invoice Processing API is running",
             "dashboard_status": "mounted at /dash_app/",
-            "csv_exists": os.path.exists(CSV_FILE),
-            "csv_records": csv_records,
-            "invoices_directory_exists": os.path.exists(INVOICES_DIR),
-            "total_pdf_files": pdf_count,
-            "processed_files": processed_count,
-            "unprocessed_files": unprocessed_count
+            "storage": {
+                "type": csv_location,
+                "csv_records": csv_records,
+                "csv_accessible": csv_accessible,
+                "github": github_status
+            },
+            "files": {
+                "invoices_directory_exists": os.path.exists(INVOICES_DIR),
+                "total_pdf_files": pdf_count,
+                "processed_files": processed_count,
+                "unprocessed_files": unprocessed_count
+            }
         }
     except Exception as e:
         return {
@@ -525,9 +706,46 @@ async def health_check():
             "message": f"Health check failed: {str(e)}"
         }
 
+@app.get("/data/")
+async def get_data():
+    """Get CSV data for the dashboard or external use"""
+    try:
+        df = read_csv_data()
+        
+        if df.empty:
+            return {
+                "message": "No data available",
+                "data": [],
+                "total_records": 0,
+                "storage_type": "GitHub" if use_github_storage else "Local"
+            }
+        
+        # Convert DataFrame to list of dictionaries
+        data = df.to_dict('records')
+        
+        return {
+            "message": f"Successfully retrieved {len(data)} records",
+            "data": data,
+            "total_records": len(data),
+            "storage_type": "GitHub" if use_github_storage else "Local",
+            "csv_url": github_storage.get_raw_csv_url() if use_github_storage and github_storage else None
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving data: {str(e)}")
+
 if __name__ == "__main__":
-    print("Starting Invoice Processing API...")
+    print("🚀 Starting Invoice Processing API...")
     print("API will be available at: http://localhost:8000")
     print("API Documentation: http://localhost:8000/docs")
     print("Dashboard will be available at: http://localhost:8000/dash_app/")
+    
+    # Check GitHub configuration
+    try:
+        config = GitHubConfig()
+        print(f"✅ GitHub configured: {config.repo_owner}/{config.repo_name}")
+    except ValueError as e:
+        print(f"⚠️  GitHub not configured: {e}")
+        print("📁 Will use local storage")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
