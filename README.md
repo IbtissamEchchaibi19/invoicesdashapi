@@ -1,4 +1,4 @@
-# AI-Powered Beekeeping Expert Chatbot with RAG Evaluation Framework
+# Document Analytics & Visualization API
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![Gradio](https://img.shields.io/badge/Gradio-4.0+-orange.svg)](https://gradio.app)
